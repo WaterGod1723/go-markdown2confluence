@@ -196,3 +196,53 @@ Which will translate to:
   <ac:parameter ac:name="separator">pipe</ac:parameter>
 </ac:structured-macro>
 ```
+
+## MCP Server
+
+`markdown2confluence` can also run as a [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server over stdio.
+
+```shell
+markdown2confluence mcp
+```
+
+The server exposes two tools that wrap the existing CLI logic. Credentials are still read from the environment variables described above.
+
+### MCP Configuration Example (Claude Desktop)
+
+```json
+{
+  "mcpServers": {
+    "markdown2confluence": {
+      "command": "markdown2confluence",
+      "args": ["mcp"],
+      "env": {
+        "CONFLUENCE_USERNAME": "your-email@example.com",
+        "CONFLUENCE_PASSWORD": "your-api-token",
+        "CONFLUENCE_ENDPOINT": "https://mycompany.atlassian.net/wiki"
+      }
+    }
+  }
+}
+```
+
+### Tool: `upload_markdown_to_confluence`
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `space` | string | yes | Confluence space key |
+| `title` | string | yes | Page title |
+| `content` | string | yes | Markdown content |
+| `parent` | string | no | Parent page path or numeric page ID |
+| `base_path` | string | no | Base directory for resolving relative local images |
+| `hardwraps` | boolean | no | Render newlines as `<br />` |
+| `comment` | string | no | Version comment |
+
+#### Tool: `get_confluence_space_by_page_id`
+
+Use this tool when the caller knows a Confluence page ID but does not know the
+space key (namespace). It calls the Confluence API and returns the real space
+key from the page metadata. The space key must never be guessed.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `page_id` | string | yes | Numeric Confluence page ID |

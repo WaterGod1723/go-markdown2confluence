@@ -47,6 +47,7 @@ type Markdown2Confluence struct {
 	InsecureTLS         bool
 	Endpoint            string
 	Parent              string
+	PageID              string
 	SourceMarkdown      []string
 	ExcludeFilePatterns []string
 	client              *confluence.Client
@@ -91,20 +92,20 @@ func (m *Markdown2Confluence) SourceEnvironmentVariables() {
 
 // Validate required configs are set
 func (m Markdown2Confluence) Validate() error {
-	if m.Space == "" {
+	if m.Space == "" && m.PageID == "" {
 		return fmt.Errorf("--space is not defined")
 	}
 	if m.Username == "" && m.AccessToken == "" {
-		return fmt.Errorf("--username is not defined")
+		return fmt.Errorf("--username is not defined (or set CONFLUENCE_USERNAME environment variable)")
 	}
 	if m.Password == "" && m.AccessToken == "" {
-		return fmt.Errorf("--password is not defined")
+		return fmt.Errorf("--password is not defined (or set CONFLUENCE_PASSWORD environment variable)")
 	}
 	if m.Endpoint == "" {
-		return fmt.Errorf("--endpoint is not defined")
+		return fmt.Errorf("--endpoint is not defined (or set CONFLUENCE_ENDPOINT environment variable)")
 	}
 	if m.Endpoint == DefaultEndpoint {
-		return fmt.Errorf("--endpoint is not defined")
+		return fmt.Errorf("--endpoint is not defined (or set CONFLUENCE_ENDPOINT environment variable)")
 	}
 	if len(m.SourceMarkdown) == 0 {
 		return fmt.Errorf("please pass a markdown file or directory of markdown files")
@@ -113,7 +114,7 @@ func (m Markdown2Confluence) Validate() error {
 		return fmt.Errorf("You can not set the title for multiple files")
 	}
 	if m.AccessToken == "" && m.Username == "" {
-		return fmt.Errorf("--access-token is not defined")
+		return fmt.Errorf("--access-token is not defined (or set CONFLUENCE_ACCESS_TOKEN environment variable)")
 	}
 	return nil
 }
@@ -216,8 +217,9 @@ func (m *Markdown2Confluence) Run() []error {
 
 		} else {
 			md = MarkdownFile{
-				Path:  f,
-				Title: m.Title,
+				Path:   f,
+				Title:  m.Title,
+				PageID: m.PageID,
 			}
 
 			if md.Title == "" {

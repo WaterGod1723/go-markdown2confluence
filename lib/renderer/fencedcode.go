@@ -18,10 +18,59 @@ type ConfluenceFencedCodeBlockHTMLRender struct {
 
 const (
 	LanguageStringConfluenceMacro string = "CONFLUENCE-MACRO"
+	LanguageStringMermaid         string = "mermaid"
 
 	MacroContentKeyPlainTextBody string = "plain-text-body"
 	MacroContentKeyRichTextBody  string = "rich-text-body"
 )
+
+// Supported Confluence code macro languages and their mappings
+var confluenceLanguageMap = map[string]string{
+	"javascript": "javascript",
+	"js":         "javascript",
+	"typescript": "javascript",
+	"ts":         "javascript",
+	"json":       "javascript", // Map JSON to JavaScript since Confluence doesn't support JSON
+	"xml":        "xml",
+	"html":       "xml",       // Map HTML to XML
+	"htm":        "xml",
+	"yaml":       "yaml",
+	"yml":        "yaml",
+	"python":     "python",
+	"py":         "python",
+	"java":       "java",
+	"c":          "c",
+	"cpp":        "cpp",
+	"c++":        "cpp",
+	"cxx":        "cpp",
+	"csharp":     "csharp",
+	"cs":         "csharp",
+	"php":        "php",
+	"ruby":       "ruby",
+	"rb":         "ruby",
+	"perl":       "perl",
+	"pl":         "perl",
+	"bash":       "bash",
+	"sh":         "bash",
+	"shell":      "bash",
+	"sql":        "sql",
+	"groovy":     "groovy",
+	"scala":      "scala",
+	"go":         "go",
+	"swift":      "swift",
+	"kotlin":     "kotlin",
+	"rust":       "rust",
+}
+
+// getConfluenceLanguage maps a language string to a Confluence-supported language
+func getConfluenceLanguage(lang string) string {
+	// Check if the language is already mapped
+	if mappedLang, ok := confluenceLanguageMap[lang]; ok {
+		return mappedLang
+	}
+	// Return empty string for unsupported languages (Confluence will use default)
+	return ""
+}
 
 // NewConfluenceFencedCodeBlockHTMLRender returns a new ConfluenceFencedCodeBlockHTMLRender.
 func NewConfluenceFencedCodeBlockHTMLRender(opts ...html.Option) renderer.NodeRenderer {
@@ -58,6 +107,17 @@ func (r *ConfluenceFencedCodeBlockHTMLRender) renderConfluenceFencedCode(w util.
 		if entering {
 			r.writeMacro(w, source, n)
 		}
+	case LanguageStringMermaid:
+		if entering {
+			s := `<ac:structured-macro ac:name="mermaiddiagram" ac:schema-version="1">`
+			s = s + `<ac:parameter ac:name="theme">default</ac:parameter>`
+			s = s + `<ac:plain-text-body><![CDATA[ `
+			_, _ = w.WriteString(s)
+			r.writeLines(w, source, n)
+		} else {
+			s := ` ]]></ac:plain-text-body></ac:structured-macro>`
+			_, _ = w.WriteString(s)
+		}
 	default:
 		if entering {
 			// insert a code-macro
@@ -66,7 +126,11 @@ func (r *ConfluenceFencedCodeBlockHTMLRender) renderConfluenceFencedCode(w util.
 			s = s + `<ac:parameter ac:name="linenumbers">true</ac:parameter>`
 
 			if language != nil {
-				s = s + `<ac:parameter ac:name="language">` + langString + `</ac:parameter>`
+				// Map the language to a Confluence-supported language
+					confluenceLang := getConfluenceLanguage(langString)
+					if confluenceLang != "" {
+						s = s + `<ac:parameter ac:name="language">` + confluenceLang + `</ac:parameter>`
+					}
 			}
 
 			s = s + `<ac:plain-text-body><![CDATA[ `

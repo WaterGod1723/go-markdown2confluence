@@ -1,8 +1,10 @@
 package lib
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"net/http"
 	"strings"
 
 	"github.com/justmiles/go-confluence"
@@ -14,6 +16,7 @@ type MarkdownFile struct {
 	Title    string
 	Parents  []string
 	Ancestor string
+	PageID   string
 }
 
 func (f *MarkdownFile) String() (urlPath string) {
@@ -57,6 +60,39 @@ func (f *MarkdownFile) Upload(m *Markdown2Confluence) (urlPath string, err error
 		for _, image := range images {
 			fmt.Printf("LOCAL IMAGE FOUND: %s\n", image)
 		}
+	}
+
+	// if PageID is set, fetch the page directly by ID and update it
+	if f.PageID != "" {
+		var content confluence.Content
+		var currContentID string
+
+		content, err = fetchPageByID(m, f.PageID)
+		if err != nil {
+			return urlPath, fmt.Errorf("Error fetching page by ID %s: %s", f.PageID, err)
+		}
+
+		content.Version.Number++
+		content.Version.Message = m.Comment
+		content.Body.Storage.Representation = "storage"
+		content.Body.Storage.Value = wikiContent
+		if f.Title != "" {
+			content.Title = f.Title
+		}
+
+		content, err = m.client.UpdateContent(&content, nil)
+		if err != nil {
+			return urlPath, fmt.Errorf("Error updating content by ID %s: %s", f.PageID, err)
+		}
+		urlPath = m.client.Endpoint + content.Links.Tinyui
+		currContentID = content.ID
+
+		_, errors := m.client.AddUpdateAttachments(currContentID, images)
+		if len(errors) > 0 {
+			fmt.Println(errors)
+			err = errors[0]
+		}
+		return urlPath, err
 	}
 
 	// search for existing page
@@ -226,3 +262,37 @@ const defaultAncestorPage = `
    </ac:structured-macro>
 </p>
 `
+
+func fetchPageByID(m *Markdown2Confluence, pageID string) (confluence.Content, error) {
+	url := strings.TrimSuffix(m.Endpoint, "/") + "/rest/api/content/" + pageID + "?expand=version,body.storage,space"
+
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return confluence.Content{}, fmt.Errorf("unable to build request: %w", err)
+	}
+	req.Header.Set("Accept", "application/json")
+
+	if m.AccessToken != "" {
+		req.Header.Set("Authorization", "Bearer "+m.AccessToken)
+	} else {
+		req.SetBasicAuth(m.Username, m.Password)
+	}
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return confluence.Content{}, fmt.Errorf("Confluence API request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, _ := ioutil.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusOK {
+		return confluence.Content{}, fmt.Errorf("Confluence API returned status %d: %s", resp.StatusCode, string(body))
+	}
+
+	var content confluence.Content
+	if err := json.Unmarshal(body, &content); err != nil {
+		return confluence.Content{}, fmt.Errorf("unable to decode Confluence API response: %w", err)
+	}
+
+	return content, nil
+}

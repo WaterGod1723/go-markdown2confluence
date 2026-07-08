@@ -17,7 +17,6 @@ var m lib.Markdown2Confluence
 func init() {
 	log.SetFlags(0)
 
-	rootCmd.Flags().SetInterspersed(false)
 	rootCmd.PersistentFlags().StringVarP(&m.Space, "space", "s", "", "Space in which page should be created")
 	rootCmd.PersistentFlags().StringVarP(&m.Comment, "comment", "c", "", "(Optional) Add comment to page")
 	rootCmd.PersistentFlags().StringVarP(&m.Username, "username", "u", "", "Confluence username. (Alternatively set CONFLUENCE_USERNAME environment variable)")
@@ -30,6 +29,7 @@ func init() {
 	rootCmd.PersistentFlags().BoolVarP(&m.UseDocumentTitle, "use-document-title", "", false, "Will use the Markdown document title (# Title) if available")
 	rootCmd.PersistentFlags().BoolVarP(&m.WithHardWraps, "hardwraps", "w", false, "Render newlines as <br />")
 	rootCmd.PersistentFlags().IntVarP(&m.Since, "modified-since", "m", 0, "Only upload files that have modifed in the past n minutes")
+	rootCmd.PersistentFlags().StringVar(&m.PageID, "page-id", "", "Update an existing Confluence page by its numeric page ID")
 	rootCmd.PersistentFlags().StringVarP(&m.Title, "title", "t", "", "Set the page title on upload (defaults to filename without extension)")
 	rootCmd.PersistentFlags().StringSliceVarP(&m.ExcludeFilePatterns, "exclude", "x", []string{}, "list of exclude file patterns (regex) for that will be applied on markdown file paths")
 	m.SourceEnvironmentVariables()
@@ -40,6 +40,29 @@ func init() {
 var rootCmd = &cobra.Command{
 	Use:   "markdown2confluence",
 	Short: "Push markdown files to Confluence Cloud",
+	Long: `Push markdown files to Confluence Cloud.
+
+Environment Variables:
+  CONFLUENCE_USERNAME    Confluence username (email for API token auth)
+  CONFLUENCE_PASSWORD    Confluence password or API token
+  CONFLUENCE_ENDPOINT    Confluence endpoint URL (e.g., https://yourcompany.atlassian.net/wiki)
+  CONFLUENCE_ACCESS_TOKEN Bearer access token (alternative to username/password)
+
+For authentication, it is recommended to use API tokens instead of passwords.
+Generate your API token at: https://id.atlassian.com/manage/api-tokens
+
+Examples:
+  # Set environment variables
+  export CONFLUENCE_USERNAME="your-email@example.com"
+  export CONFLUENCE_PASSWORD="your-api-token"
+  export CONFLUENCE_ENDPOINT="https://yourcompany.atlassian.net/wiki"
+
+  # Upload a directory
+  markdown2confluence --space 'TEAM' ./docs
+
+  # Upload a single file
+  markdown2confluence --space 'TEAM' --title 'API Docs' ./api.md`,
+	Args: cobra.MinimumNArgs(1),
 	Run: func(rootCmd *cobra.Command, args []string) {
 		m.SourceMarkdown = args
 		// Validate the arguments

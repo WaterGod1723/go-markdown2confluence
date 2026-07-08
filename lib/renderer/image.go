@@ -110,7 +110,7 @@ func localFile(filePath string, destination []byte) (string, error) {
 	//path.Dir currDir is workpath so "path.Dir is '.'"
 	//And so make a absolute path for check file
 	localizedAbsPath, _ := filepath.Abs(filePath)
-	localizedPath = path.Join(filepath.Dir(localizedAbsPath), string(destination))
+	localizedPath = filepath.Join(filepath.Dir(localizedAbsPath), string(destination))
 	_, err = os.Stat(localizedPath)
 	if err == nil {
 		return localizedPath, nil

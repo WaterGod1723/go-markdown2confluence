@@ -7,3 +7,11 @@ dist
 .envrc
 .idea/
 ***/*.secret
+.genie-flow/
+.DS_Store
+markdown2confluence
+temp
+*.zip
+*.tar.gz
+bin/
+docs/
